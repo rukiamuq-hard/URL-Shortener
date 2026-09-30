@@ -1,13 +1,10 @@
 package main
 
 import (
-	"log"
+	"URLS/internal/app"
 )
 
 func main() {
-	a := app.New()
-	err := a.Start()
-	if err != nil {
-		log.Fatal(err)
-	}
+	a := app.NewApp()
+	defer a.Close()
 }
