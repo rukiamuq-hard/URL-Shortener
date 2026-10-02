@@ -2,6 +2,11 @@ package app
 
 import (
 	"URLS/internal/platform/config"
+	"context"
+	"fmt"
+	"os"
+	"os/signal"
+	"syscall"
 )
 
 type App struct {
@@ -10,9 +15,15 @@ type App struct {
 }
 
 func NewApp() *App {
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer cancel()
 	cfg := config.Load()
 	apiApp := NewApi(cfg)
 
+	err := apiApp.Run(ctx)
+	if err != nil {
+		fmt.Println("Error", err)
+	}
 	return &App{
 		cfg:    cfg,
 		apiApp: apiApp,
@@ -20,5 +31,4 @@ func NewApp() *App {
 }
 
 func (a *App) Close() {
-	defer a.apiApp.Close()
 }
