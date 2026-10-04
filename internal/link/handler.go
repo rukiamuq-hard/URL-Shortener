@@ -8,10 +8,11 @@ import (
 )
 
 type Handler struct {
+	svc *Service
 }
 
-func NewHandler() *Handler {
-	return &Handler{}
+func NewHandler(svc *Service) *Handler {
+	return &Handler{svc: svc}
 }
 
 func (h *Handler) Register(echo *echo.Echo) {

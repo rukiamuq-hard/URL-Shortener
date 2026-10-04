@@ -2,6 +2,7 @@ package app
 
 import (
 	"URLS/internal/link"
+	"URLS/internal/monetization"
 	"URLS/internal/platform/config"
 	"URLS/internal/platform/postgres"
 	"context"
@@ -15,12 +16,13 @@ type APIApp struct {
 	cfg  *config.Config
 }
 
-type Handlers struct {
-}
-
 func NewApi(cfg *config.Config) *APIApp {
 	e := echo.New()
-	linkHandler := link.NewHandler()
+
+	adServ := monetization.NewMonetization()
+
+	linkService := link.NewService(adServ)
+	linkHandler := link.NewHandler(linkService)
 
 	linkHandler.Register(e)
 	return &APIApp{
