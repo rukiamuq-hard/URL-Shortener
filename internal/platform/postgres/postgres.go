@@ -1,34 +1,40 @@
 package postgres
 
 import (
+	"context"
 	"database/sql"
+	"time"
+
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
-type Postgress struct {
+type Postgres struct {
 	DB *sql.DB
 }
 
-func New() *Postgress {
-	return &Postgress{}
+func New() *Postgres {
+	return &Postgres{}
 }
 
-func (pg *Postgress) Connect(postgresDSN string) error {
+func (pg *Postgres) Connect(postgresDSN string, ctx context.Context) error {
+	pingCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
 	var err error
 	pg.DB, err = sql.Open("pgx", postgresDSN)
 	if err != nil {
 		return err
 	}
-	defer pg.DB.Close()
 
-	if err = pg.DB.Ping(); err != nil {
+	if err = pg.DB.PingContext(pingCtx); err != nil {
+		pg.Close()
 		return err
 	}
 
 	return nil
 }
 
-func (pg *Postgress) Close() error {
+func (pg *Postgres) Close() error {
 	if err := pg.DB.Close(); err != nil {
 		return err
 	}

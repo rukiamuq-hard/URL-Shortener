@@ -4,14 +4,12 @@ import (
 	"URLS/internal/link"
 	"URLS/internal/monetization"
 	"URLS/internal/platform/config"
-	"URLS/internal/platform/postgres"
 	"context"
 	"github.com/labstack/echo/v5"
 	"time"
 )
 
 type APIApp struct {
-	pdb  *postgres.Postgress
 	echo *echo.Echo
 	cfg  *config.Config
 }
@@ -26,7 +24,6 @@ func NewApi(cfg *config.Config) *APIApp {
 
 	linkHandler.Register(e)
 	return &APIApp{
-		pdb:  postgres.New(),
 		echo: e,
 		cfg:  cfg,
 	}
