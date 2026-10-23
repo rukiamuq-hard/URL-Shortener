@@ -15,7 +15,7 @@ type App struct {
 func NewApp() *App {
 	cfg := config.Load()
 	pg := postgres.New()
-	apiApp := NewApi(cfg)
+	apiApp := NewApi(cfg, pg)
 
 	return &App{
 		cfg:    cfg,

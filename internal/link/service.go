@@ -1,15 +1,11 @@
 package link
 
-import (
-	"URLS/internal/monetization"
-)
-
 type Service struct {
-	AdServ *monetization.AdProvider
+	PDB Postgres
 }
 
-func NewService(AdServ *monetization.AdProvider) *Service {
+func NewService(PDB Postgres) *Service {
 	return &Service{
-		AdServ: AdServ,
+		PDB: PDB,
 	}
 }
