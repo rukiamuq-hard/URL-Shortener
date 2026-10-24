@@ -13,8 +13,11 @@ func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
-	a := app.NewApp()
-	err := a.Run(ctx)
+	a, err := app.NewApp(ctx)
+	if err != nil {
+		log.Fatal(err)
+	}
+	err = a.Run(ctx)
 	defer a.Close()
 	if err != nil {
 		log.Fatal(err)

@@ -21,8 +21,8 @@ func NewRepository(Db *sql.DB) *Repository {
 
 func (r *Repository) CreateLink(ctx context.Context, l *Link) error {
 	_, err := r.Db.ExecContext(ctx,
-		`INSERT INTO links(code, original_url, created_at, expired_at) VALUES($1, $2, $3, $4)`,
-		l.Code, l.Orig_url, l.Created_at, l.Duration,
+		`INSERT INTO links(code, original_url, expires_at) VALUES($1, $2, $3)`,
+		l.Code, l.Orig_url, l.Expired_at,
 	)
 	return err
 }

@@ -12,23 +12,24 @@ type App struct {
 	pg     *postgres.Postgres
 }
 
-func NewApp() *App {
+func NewApp(ctx context.Context) (*App, error) {
 	cfg := config.Load()
 	pg := postgres.New()
+
+	if err := pg.Connect(cfg.PostgresDSN, ctx); err != nil {
+		return nil, err
+	}
+
 	apiApp := NewApi(cfg, pg)
 
 	return &App{
 		cfg:    cfg,
 		apiApp: apiApp,
 		pg:     pg,
-	}
+	}, nil
 }
 
 func (a *App) Run(ctx context.Context) error {
-	if err := a.pg.Connect(a.cfg.PostgresDSN, ctx); err != nil {
-		return err
-	}
-
 	err := a.apiApp.Run(ctx)
 	if err != nil {
 		return err

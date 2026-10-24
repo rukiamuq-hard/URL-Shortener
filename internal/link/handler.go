@@ -28,5 +28,10 @@ func (h *Handler) CreateLink(c *echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"Status": "Incorrect POST request"})
 	}
 
-	return c.JSON(http.StatusOK, map[string]string{"message": "Created"})
+	ctx := c.Request().Context()
+	if err := h.svc.CreateLink(ctx, &hook); err != nil {
+		return c.JSON(http.StatusConflict, map[string]string{"message": err.Error()})
+	}
+	return c.JSON(http.StatusOK, map[string]string{"message": "Succesfully created"})
+
 }
