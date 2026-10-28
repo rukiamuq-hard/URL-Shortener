@@ -1,9 +1,8 @@
 package link
 
 import (
-	"net/http"
-
 	"github.com/labstack/echo/v5"
+	"net/http"
 )
 
 type Handler struct {
