@@ -1,53 +1,54 @@
 package link
 
 import (
+	"URLS/pkg/shortcode"
 	"context"
-	"crypto/rand"
-	"math/big"
+	"errors"
+	"net/url"
 	"time"
 )
 
 type Service struct {
-	PDB Postgres
+	pdb Repository
+	sc  *shortcode.Shortcode
 }
 
-func NewService(PDB Postgres) *Service {
+func NewService(PDB Repository, SC *shortcode.Shortcode) *Service {
 	return &Service{
-		PDB: PDB,
+		pdb: PDB,
+		sc:  SC,
 	}
 }
 
-func (s *Service) CreateLink(ctx context.Context, l *Link) error {
+func (s *Service) CreateLink(ctx context.Context, l *Link) (*Link, error) {
 	ctx, cancel := context.WithTimeout(ctx, time.Second*5)
 	defer cancel()
 
 	var err error
 
-	l.Code, err = s.generateCode()
-	if err != nil {
-		return err
+	u, err := url.Parse(l.Orig_url)
+	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+		return nil, ErrInvalidInput
 	}
 
-	l.Created_at = time.Now()
-	l.Expires_at = l.Created_at.Add(time.Duration(l.Duration) * time.Second)
-
-	if err := s.PDB.CreateLink(ctx, l); err != nil {
-		return err
+	if l.Duration < 0 {
+		return nil, ErrExpired
+	} else if l.Duration > 0 {
+		t := time.Now().Add(time.Duration(l.Duration) * time.Second)
+		l.Expires_at = &t
 	}
-	return nil
-}
 
-func (s *Service) generateCode() (string, error) {
-	const letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-	const codeLen = 7
-
-	result := make([]byte, codeLen)
-	for i := 0; i < codeLen; i++ {
-		num, err := rand.Int(rand.Reader, big.NewInt(int64(len(letters))))
+	for i := 0; i < 5; i++ {
+		l.Code, err = s.sc.GenerateCode(7)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
-		result[i] = letters[num.Int64()]
+
+		err := s.pdb.CreateLink(ctx, l)
+		if !errors.Is(err, ErrCodeTaken) {
+			return l, err
+		}
 	}
-	return string(result), nil
+
+	return nil, ErrCodeTaken
 }

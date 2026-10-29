@@ -5,6 +5,7 @@ import (
 	//"URLS/internal/monetization"
 	"URLS/internal/platform/config"
 	"URLS/internal/platform/postgres"
+	"URLS/pkg/shortcode"
 	"context"
 	"time"
 
@@ -14,15 +15,15 @@ import (
 type APIApp struct {
 	echo *echo.Echo
 	cfg  *config.Config
-	pg   *postgres.Postgres
 }
 
 func NewApi(cfg *config.Config, pg *postgres.Postgres) *APIApp {
 	e := echo.New()
 
 	//adServ := monetization.NewMonetization()
-	linkRepo := link.NewRepository(pg.DB)
-	linkService := link.NewService(linkRepo)
+	linkRepo := link.NewPostgresRepository(pg.DB)
+	pkgSc := shortcode.NewShortcode()
+	linkService := link.NewService(linkRepo, pkgSc)
 	linkHandler := link.NewHandler(linkService)
 
 	linkHandler.Register(e)

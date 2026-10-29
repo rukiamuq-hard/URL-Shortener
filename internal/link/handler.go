@@ -28,9 +28,10 @@ func (h *Handler) CreateLink(c *echo.Context) error {
 	}
 
 	ctx := c.Request().Context()
-	if err := h.svc.CreateLink(ctx, &hook); err != nil {
-		return c.JSON(http.StatusConflict, map[string]string{"message": err.Error()})
+	link, err := h.svc.CreateLink(ctx, &hook)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"message": err.Error()})
 	}
-	return c.JSON(http.StatusOK, map[string]string{"message": "Succesfully created"})
+	return c.JSON(http.StatusCreated, map[string]string{"code": link.Code, "expires_at": link.Expires_at.String()})
 
 }
