@@ -1,6 +1,9 @@
 package link
 
 import (
+	"URLS/pkg/httpresponse"
+	"errors"
+	"fmt"
 	"github.com/labstack/echo/v5"
 	"net/http"
 )
@@ -24,14 +27,22 @@ func (h *Handler) Register(echo *echo.Echo) {
 func (h *Handler) CreateLink(c *echo.Context) error {
 	var hook Link
 	if err := c.Bind(&hook); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"Status": "Incorrect POST request"})
+		return c.JSON(http.StatusBadRequest, httpresponse.Error("Incorrect POST request"))
 	}
 
 	ctx := c.Request().Context()
 	link, err := h.svc.CreateLink(ctx, &hook)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"message": err.Error()})
+		switch {
+		case errors.Is(err, ErrCodeTaken):
+			return c.JSON(http.StatusConflict, httpresponse.Error("Code already taken"))
+		case errors.Is(err, ErrNotFound):
+			return c.JSON(http.StatusNotFound, httpresponse.Error("Not found"))
+		default:
+			fmt.Println("Error:", err.Error())
+			return c.JSON(http.StatusInternalServerError, httpresponse.Error("Server error"))
+		}
 	}
-	return c.JSON(http.StatusCreated, map[string]string{"code": link.Code, "expires_at": link.Expires_at.String()})
 
+	return c.JSON(http.StatusCreated, map[string]any{"code": link.Code, "expires_at": link.Expires_at})
 }
