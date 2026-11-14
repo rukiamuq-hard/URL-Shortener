@@ -1,3 +1,5 @@
+-- +goose Up
+-- +goose StatementBegin
 CREATE TABLE IF NOT EXISTS links(
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   code VARCHAR(32) NOT NULL UNIQUE,
@@ -7,3 +9,9 @@ CREATE TABLE IF NOT EXISTS links(
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   expires_at TIMESTAMPTZ NULL
 );
+-- +goose StatementEnd
+
+-- +goose Down
+-- +goose StatementBegin
+DROP TABLE IF EXISTS links;
+-- +goose StatementEnd

@@ -38,6 +38,8 @@ func (h *Handler) CreateLink(c *echo.Context) error {
 			return c.JSON(http.StatusConflict, httpresponse.Error("Code already taken"))
 		case errors.Is(err, ErrNotFound):
 			return c.JSON(http.StatusNotFound, httpresponse.Error("Not found"))
+		case errors.Is(err, ErrInvalidInput), errors.Is(err, ErrExpired):
+			return c.JSON(http.StatusBadRequest, httpresponse.Error(err.Error()))
 		default:
 			fmt.Println("Error:", err.Error())
 			return c.JSON(http.StatusInternalServerError, httpresponse.Error("Server error"))
