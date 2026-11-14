@@ -140,26 +140,42 @@ cd URL-Shortener
 
 2. Configure environment variables.
 
-Create a `.env` file or copy the example configuration:
+Create a `.env` file or copy the example configuration (`.env.example`):
 
 ```bash
 cp .env.example .env
 ```
 
-Example:
+Example (`.env`):
 
 ```env
-APP_PORT=8080
-APP_ENV=development
-POSTGRES_DSN=postgres://postgres:postgres@localhost:5432/urlshortener?sslmode=disable
-REDIS_ADDR=localhost:6379
-RATE_LIMITER_ENABLED=true
+# PostgreSQL Settings (used by Docker Compose and Go app)
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=postgres
+POSTGRES_DB=url_shortener
+POSTGRES_PORT=5432
+
+# Application Settings (for Go app)
+HTTPAddr=:8080
+PostgresDSN=postgres://postgres:postgres@localhost:5432/url_shortener?sslmode=disable
+RedisAddr=localhost:6379
 ```
 
-3. Start required infrastructure.
+3. Start required infrastructure and run database migrations using the `deploy` Makefile:
 
 ```bash
-docker compose -f deploy/docker-compose.yml up -d postgres redis prometheus
+cd deploy
+make up
+make migrate-up
+```
+
+Other available commands in `deploy/`:
+```bash
+cd deploy
+make migrate-status   # Check migration status
+make migrate-down     # Rollback migration
+make restart          # Restart docker containers
+make down             # Stop docker containers
 ```
 
 4. Run the API service.
@@ -172,13 +188,6 @@ go run ./cmd/api
 
 ```bash
 go run ./cmd/worker
-```
-
-Optional Makefile shortcuts:
-
-```bash
-make up
-make test
 ```
 
 ## Usage
