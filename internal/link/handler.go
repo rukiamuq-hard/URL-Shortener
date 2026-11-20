@@ -18,8 +18,8 @@ func NewHandler(svc *Service) *Handler {
 
 func (h *Handler) Register(echo *echo.Echo) {
 	echo.POST("/links", h.CreateLink)
-	//echo.GET("/:code" h.Redirect)        // redirect
-	//echo.GET("/links/:code" h.Get)       // get
+	echo.GET("/:code", h.Redirect)
+	//echo.GET("/links/:code" h.)
 	//echo.PATCH("/links/:code" h.Update)  // update
 	//echo.DELETE("/links/:code" h.Delete) // delete
 }
@@ -47,4 +47,25 @@ func (h *Handler) CreateLink(c *echo.Context) error {
 	}
 
 	return c.JSON(http.StatusCreated, map[string]any{"code": link.Code, "expires_at": link.Expires_at})
+}
+
+func (h *Handler) Redirect(c *echo.Context) error {
+	ctx := c.Request().Context()
+
+	code := c.Param("code")
+
+	val, err := h.svc.GetNotOwner(ctx, code)
+	if err != nil {
+		switch {
+		case errors.Is(err, ErrNotFound):
+			return c.JSON(http.StatusNotFound, httpresponse.Error("Not found"))
+		case errors.Is(err, ErrExpired):
+			return c.JSON(http.StatusGone, httpresponse.Error("Link expired"))
+		default:
+			fmt.Println("Error: ", err.Error())
+			return c.JSON(http.StatusInternalServerError, httpresponse.Error("Server error"))
+		}
+	}
+
+	return c.Redirect(http.StatusFound, val.Orig_url)
 }

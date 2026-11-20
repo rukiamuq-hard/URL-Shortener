@@ -21,7 +21,7 @@ func NewService(PDB Repository, SC *shortcode.Shortcode) *Service {
 }
 
 func (s *Service) CreateLink(ctx context.Context, l *Link) (*Link, error) {
-	ctx, cancel := context.WithTimeout(ctx, time.Second*5)
+	dbctx, cancel := context.WithTimeout(ctx, time.Second*5)
 	defer cancel()
 
 	var err error
@@ -44,11 +44,23 @@ func (s *Service) CreateLink(ctx context.Context, l *Link) (*Link, error) {
 			return nil, err
 		}
 
-		err := s.pdb.CreateLink(ctx, l)
+		err := s.pdb.CreateLink(dbctx, l)
 		if !errors.Is(err, ErrCodeTaken) {
 			return l, err
 		}
 	}
 
 	return nil, ErrCodeTaken
+}
+
+func (s *Service) GetNotOwner(ctx context.Context, code string) (*Link, error) {
+	dbctx, cancel := context.WithTimeout(ctx, time.Second*5)
+	defer cancel()
+
+	val, err := s.pdb.GetByCode(dbctx, code)
+	if err != nil {
+		return nil, err
+	}
+
+	return val, err
 }

@@ -11,6 +11,7 @@ import (
 
 type Repository interface {
 	CreateLink(ctx context.Context, l *Link) error
+	GetByCode(ctx context.Context, code string) (*Link, error)
 }
 
 type PostgresRepository struct {
@@ -36,4 +37,20 @@ func (r *PostgresRepository) CreateLink(ctx context.Context, l *Link) error {
 		}
 	}
 	return err
+}
+
+func (r *PostgresRepository) GetByCode(ctx context.Context, code string) (*Link, error) {
+	var myLink Link
+	err := r.Db.QueryRowContext(ctx,
+		`SELECT code, original_url, monetization_enabled, expires_at FROM links WHERE code = $1`,
+		code,
+	).Scan(&myLink.Code, &myLink.Orig_url, &myLink.Monet_enabled, &myLink.Expires_at)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrNotFound
+		}
+		return nil, err
+	}
+
+	return &myLink, nil
 }
