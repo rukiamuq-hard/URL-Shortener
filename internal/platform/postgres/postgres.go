@@ -16,7 +16,7 @@ func New() *Postgres {
 	return &Postgres{}
 }
 
-func (pg *Postgres) Connect(postgresDSN string, ctx context.Context) error {
+func (pg *Postgres) Connect(ctx context.Context, postgresDSN string) error {
 	pingCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 

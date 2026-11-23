@@ -4,6 +4,7 @@ import (
 	"URLS/internal/platform/config"
 	"URLS/internal/platform/postgres"
 	"context"
+	"log/slog"
 )
 
 type App struct {
@@ -16,7 +17,7 @@ func NewApp(ctx context.Context) (*App, error) {
 	cfg := config.Load()
 	pg := postgres.New()
 
-	if err := pg.Connect(cfg.PostgresDSN, ctx); err != nil {
+	if err := pg.Connect(ctx, cfg.PostgresDSN); err != nil {
 		return nil, err
 	}
 
@@ -38,5 +39,8 @@ func (a *App) Run(ctx context.Context) error {
 }
 
 func (a *App) Close() {
-	a.pg.Close()
+	err := a.pg.Close()
+	if err != nil {
+		slog.Error(err.Error())
+	}
 }

@@ -4,6 +4,7 @@ import (
 	"URLS/pkg/shortcode"
 	"context"
 	"errors"
+	"log/slog"
 	"net/url"
 	"time"
 )
@@ -53,7 +54,7 @@ func (s *Service) CreateLink(ctx context.Context, l *Link) (*Link, error) {
 	return nil, ErrCodeTaken
 }
 
-func (s *Service) GetNotOwner(ctx context.Context, code string) (*Link, error) {
+func (s *Service) GetLinkInfo(ctx context.Context, code string) (*Link, error) {
 	dbctx, cancel := context.WithTimeout(ctx, time.Second*5)
 	defer cancel()
 
@@ -62,5 +63,76 @@ func (s *Service) GetNotOwner(ctx context.Context, code string) (*Link, error) {
 		return nil, err
 	}
 
-	return val, err
+	if val.Expires_at != nil && time.Now().After(*val.Expires_at) {
+		return nil, ErrExpired
+	}
+
+	return val, nil
+}
+
+func (s *Service) clean(ctx context.Context) error {
+	clctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	n, err := s.pdb.DeleteExpired(clctx)
+	if err != nil {
+		return err
+	}
+	if n > 0 {
+		slog.Info("deleted", "nums", n)
+	}
+	return nil
+}
+
+func (s *Service) Cleaner(ctx context.Context, every time.Duration) {
+	err := s.clean(ctx)
+	if err != nil {
+		slog.Error("error cleanup ", "err", err.Error())
+	}
+	timer := time.NewTicker(1 * every)
+	defer timer.Stop()
+
+	for {
+		select {
+		case <-timer.C:
+			err := s.clean(ctx)
+			if err != nil {
+				slog.Error("error cleanup ", "err", err.Error())
+			}
+		case <-ctx.Done():
+			slog.Info("Cleaner stoped by context.")
+			return
+		}
+	}
+
+}
+
+func (s *Service) Delete(ctx context.Context, code string) error {
+	sctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	err := s.pdb.DeleteLinks(sctx, code)
+	return err
+}
+
+func (s *Service) Update(ctx context.Context, l *PatchLink) error {
+	sctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	u, err := url.Parse(*l.Orig_url)
+	if u.Host != "" {
+		if err != nil || (u.Scheme != "http" && u.Scheme != "https") {
+			return ErrInvalidInput
+		}
+	}
+
+	if l.Duration < 0 {
+		return ErrExpired
+	} else if l.Duration > 0 {
+		t := time.Now().Add(time.Duration(l.Duration) * time.Second)
+		l.Expires_at = &t
+	}
+
+	err = s.pdb.UpdateLink(sctx, l)
+	return err
 }

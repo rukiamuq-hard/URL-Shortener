@@ -2,6 +2,7 @@ package app
 
 import (
 	"URLS/internal/link"
+	"sync"
 	//"URLS/internal/monetization"
 	"URLS/internal/platform/config"
 	"URLS/internal/platform/postgres"
@@ -13,8 +14,9 @@ import (
 )
 
 type APIApp struct {
-	echo *echo.Echo
-	cfg  *config.Config
+	echo    *echo.Echo
+	cfg     *config.Config
+	service *link.Service
 }
 
 func NewApi(cfg *config.Config, pg *postgres.Postgres) *APIApp {
@@ -28,8 +30,9 @@ func NewApi(cfg *config.Config, pg *postgres.Postgres) *APIApp {
 
 	linkHandler.Register(e)
 	return &APIApp{
-		echo: e,
-		cfg:  cfg,
+		echo:    e,
+		cfg:     cfg,
+		service: linkService,
 	}
 }
 
@@ -38,5 +41,17 @@ func (a *APIApp) Run(ctx context.Context) error {
 		Address:         a.cfg.HTTPAddr,
 		GracefulTimeout: 5 * time.Second,
 	}
-	return sc.Start(ctx, a.echo)
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+
+	cleanupInterval := time.Minute
+	go func() {
+		defer wg.Done()
+		a.service.Cleaner(ctx, cleanupInterval)
+	}()
+	err := sc.Start(ctx, a.echo)
+	wg.Wait()
+
+	return err
 }

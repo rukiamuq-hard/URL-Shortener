@@ -3,8 +3,8 @@ package link
 import (
 	"URLS/pkg/httpresponse"
 	"errors"
-	"fmt"
 	"github.com/labstack/echo/v5"
+	"log/slog"
 	"net/http"
 )
 
@@ -16,12 +16,28 @@ func NewHandler(svc *Service) *Handler {
 	return &Handler{svc: svc}
 }
 
-func (h *Handler) Register(echo *echo.Echo) {
-	echo.POST("/links", h.CreateLink)
-	echo.GET("/:code", h.Redirect)
-	//echo.GET("/links/:code" h.)
-	//echo.PATCH("/links/:code" h.Update)  // update
-	//echo.DELETE("/links/:code" h.Delete) // delete
+func (h *Handler) Register(e *echo.Echo) {
+	e.POST("/links", h.CreateLink)
+	e.GET("/:code", h.Redirect)
+	e.GET("/links/:code", h.GetCreatedLink)
+	e.PATCH("/links/:code", h.Update)  // update
+	e.DELETE("/links/:code", h.Delete) // delete
+}
+
+func (h *Handler) fail(c *echo.Context, err error) error { // for processing errors
+	switch {
+	case errors.Is(err, ErrInvalidInput):
+		return c.JSON(http.StatusBadRequest, httpresponse.Error("Bad request"))
+	case errors.Is(err, ErrCodeTaken):
+		return c.JSON(http.StatusConflict, httpresponse.Error("Code already taken"))
+	case errors.Is(err, ErrNotFound):
+		return c.JSON(http.StatusNotFound, httpresponse.Error("Not found"))
+	case errors.Is(err, ErrExpired):
+		return c.JSON(http.StatusGone, httpresponse.Error("Link expired"))
+	default:
+		slog.Error("link handler", "err", err)
+		return c.JSON(http.StatusInternalServerError, httpresponse.Error("Server error"))
+	}
 }
 
 func (h *Handler) CreateLink(c *echo.Context) error {
@@ -30,42 +46,60 @@ func (h *Handler) CreateLink(c *echo.Context) error {
 		return c.JSON(http.StatusBadRequest, httpresponse.Error("Incorrect POST request"))
 	}
 
-	ctx := c.Request().Context()
-	link, err := h.svc.CreateLink(ctx, &hook)
+	link, err := h.svc.CreateLink(c.Request().Context(), &hook)
 	if err != nil {
-		switch {
-		case errors.Is(err, ErrCodeTaken):
-			return c.JSON(http.StatusConflict, httpresponse.Error("Code already taken"))
-		case errors.Is(err, ErrNotFound):
-			return c.JSON(http.StatusNotFound, httpresponse.Error("Not found"))
-		case errors.Is(err, ErrInvalidInput), errors.Is(err, ErrExpired):
-			return c.JSON(http.StatusBadRequest, httpresponse.Error(err.Error()))
-		default:
-			fmt.Println("Error:", err.Error())
-			return c.JSON(http.StatusInternalServerError, httpresponse.Error("Server error"))
-		}
+		return h.fail(c, err)
 	}
 
 	return c.JSON(http.StatusCreated, map[string]any{"code": link.Code, "expires_at": link.Expires_at})
 }
 
 func (h *Handler) Redirect(c *echo.Context) error {
-	ctx := c.Request().Context()
-
 	code := c.Param("code")
 
-	val, err := h.svc.GetNotOwner(ctx, code)
+	val, err := h.svc.GetLinkInfo(c.Request().Context(), code)
 	if err != nil {
-		switch {
-		case errors.Is(err, ErrNotFound):
-			return c.JSON(http.StatusNotFound, httpresponse.Error("Not found"))
-		case errors.Is(err, ErrExpired):
-			return c.JSON(http.StatusGone, httpresponse.Error("Link expired"))
-		default:
-			fmt.Println("Error: ", err.Error())
-			return c.JSON(http.StatusInternalServerError, httpresponse.Error("Server error"))
-		}
+		return h.fail(c, err)
 	}
 
 	return c.Redirect(http.StatusFound, val.Orig_url)
+}
+
+func (h *Handler) GetCreatedLink(c *echo.Context) error {
+
+	code := c.Param("code")
+
+	val, err := h.svc.GetLinkInfo(c.Request().Context(), code)
+	if err != nil {
+		return h.fail(c, err)
+	}
+
+	return c.JSON(http.StatusOK, val)
+}
+
+func (h *Handler) Delete(c *echo.Context) error {
+	code := c.Param("code")
+
+	err := h.svc.Delete(c.Request().Context(), code)
+	if err != nil {
+		return h.fail(c, err)
+	}
+
+	return c.JSON(http.StatusNoContent, map[string]string{"": ""})
+}
+
+func (h *Handler) Update(c *echo.Context) error {
+	var hook PatchLink
+	if err := c.Bind(&hook); err != nil {
+		return c.JSON(http.StatusBadRequest, httpresponse.Error("Incorrect PATCH request"))
+	}
+
+	code := c.Param("code")
+	hook.Code = code
+
+	err := h.svc.Update(c.Request().Context(), &hook)
+	if err != nil {
+		return h.fail(c, err)
+	}
+	return c.JSON(http.StatusOK, map[string]string{"": ""})
 }
