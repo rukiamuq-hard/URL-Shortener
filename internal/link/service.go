@@ -121,10 +121,8 @@ func (s *Service) Update(ctx context.Context, l *PatchLink) error {
 
 	if l.Orig_url != nil {
 		u, err := url.Parse(*l.Orig_url)
-		if err != nil {
-			if u.Host != "" || (u.Scheme != "http" && u.Scheme != "https") {
-				return ErrInvalidInput
-			}
+		if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Hostname() == "" {
+			return ErrInvalidInput
 		}
 	}
 

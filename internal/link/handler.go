@@ -105,7 +105,7 @@ func (h *Handler) Update(c *echo.Context) error {
 	PLink := PatchLink{
 		Code:          code,
 		Orig_url:      &hook.Orig_url,
-		Monet_enabled: &hook.Monet_enabled,
+		Monet_enabled: hook.Monet_enabled,
 		Duration:      hook.Duration,
 	}
 
