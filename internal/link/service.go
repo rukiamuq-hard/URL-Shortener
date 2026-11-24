@@ -33,7 +33,7 @@ func (s *Service) CreateLink(ctx context.Context, l *Link) (*Link, error) {
 	}
 
 	if l.Duration < 0 {
-		return nil, ErrExpired
+		return nil, ErrInvalidInput
 	} else if l.Duration > 0 {
 		t := time.Now().Add(time.Duration(l.Duration) * time.Second)
 		l.Expires_at = &t
@@ -119,20 +119,22 @@ func (s *Service) Update(ctx context.Context, l *PatchLink) error {
 	sctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	u, err := url.Parse(*l.Orig_url)
-	if u.Host != "" {
-		if err != nil || (u.Scheme != "http" && u.Scheme != "https") {
-			return ErrInvalidInput
+	if l.Orig_url != nil {
+		u, err := url.Parse(*l.Orig_url)
+		if err != nil {
+			if u.Host != "" || (u.Scheme != "http" && u.Scheme != "https") {
+				return ErrInvalidInput
+			}
 		}
 	}
 
 	if l.Duration < 0 {
-		return ErrExpired
+		return ErrInvalidInput
 	} else if l.Duration > 0 {
 		t := time.Now().Add(time.Duration(l.Duration) * time.Second)
 		l.Expires_at = &t
 	}
 
-	err = s.pdb.UpdateLink(sctx, l)
+	err := s.pdb.UpdateLink(sctx, l)
 	return err
 }

@@ -41,12 +41,18 @@ func (h *Handler) fail(c *echo.Context, err error) error { // for processing err
 }
 
 func (h *Handler) CreateLink(c *echo.Context) error {
-	var hook Link
+	var hook BindLink
 	if err := c.Bind(&hook); err != nil {
 		return c.JSON(http.StatusBadRequest, httpresponse.Error("Incorrect POST request"))
 	}
 
-	link, err := h.svc.CreateLink(c.Request().Context(), &hook)
+	Link := Link{
+		Orig_url:      hook.Orig_url,
+		Monet_enabled: hook.Monet_enabled,
+		Duration:      hook.Duration,
+	}
+
+	link, err := h.svc.CreateLink(c.Request().Context(), &Link)
 	if err != nil {
 		return h.fail(c, err)
 	}
@@ -85,21 +91,27 @@ func (h *Handler) Delete(c *echo.Context) error {
 		return h.fail(c, err)
 	}
 
-	return c.JSON(http.StatusNoContent, map[string]string{"": ""})
+	return c.NoContent(http.StatusNoContent)
 }
 
 func (h *Handler) Update(c *echo.Context) error {
-	var hook PatchLink
+	var hook BindLink
 	if err := c.Bind(&hook); err != nil {
 		return c.JSON(http.StatusBadRequest, httpresponse.Error("Incorrect PATCH request"))
 	}
 
 	code := c.Param("code")
-	hook.Code = code
 
-	err := h.svc.Update(c.Request().Context(), &hook)
+	PLink := PatchLink{
+		Code:          code,
+		Orig_url:      &hook.Orig_url,
+		Monet_enabled: &hook.Monet_enabled,
+		Duration:      hook.Duration,
+	}
+
+	err := h.svc.Update(c.Request().Context(), &PLink)
 	if err != nil {
 		return h.fail(c, err)
 	}
-	return c.JSON(http.StatusOK, map[string]string{"": ""})
+	return c.NoContent(http.StatusOK)
 }
