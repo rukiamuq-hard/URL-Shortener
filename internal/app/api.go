@@ -3,6 +3,7 @@ package app
 import (
 	"URLS/internal/link"
 	"sync"
+
 	//"URLS/internal/monetization"
 	"URLS/internal/platform/config"
 	"URLS/internal/platform/postgres"
@@ -11,6 +12,7 @@ import (
 	"time"
 
 	"github.com/labstack/echo/v5"
+	"github.com/labstack/echo/v5/middleware"
 )
 
 type APIApp struct {
@@ -21,6 +23,7 @@ type APIApp struct {
 
 func NewApi(cfg *config.Config, pg *postgres.Postgres) *APIApp {
 	e := echo.New()
+	e.Use(middleware.Recover())
 
 	//adServ := monetization.NewMonetization()
 	linkRepo := link.NewPostgresRepository(pg.DB)

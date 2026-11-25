@@ -8,6 +8,8 @@ import (
 	"net/http"
 )
 
+const liveTimeLink = 21600
+
 type Handler struct {
 	svc *Service
 }
@@ -46,9 +48,22 @@ func (h *Handler) CreateLink(c *echo.Context) error {
 		return c.JSON(http.StatusBadRequest, httpresponse.Error("Incorrect POST request"))
 	}
 
+	if hook.Orig_url == nil {
+		return c.JSON(http.StatusBadRequest, httpresponse.Error("Incorrect POST request"))
+	}
+
+	if hook.Duration > liveTimeLink {
+		return c.JSON(http.StatusBadRequest, httpresponse.Error("Out of duration range"))
+	}
+
+	monet := false
+	if hook.Monet_enabled != nil {
+		monet = *hook.Monet_enabled
+	}
+
 	Link := Link{
-		Orig_url:      hook.Orig_url,
-		Monet_enabled: hook.Monet_enabled,
+		Orig_url:      *hook.Orig_url,
+		Monet_enabled: monet,
 		Duration:      hook.Duration,
 	}
 
@@ -86,9 +101,13 @@ func (h *Handler) GetCreatedLink(c *echo.Context) error {
 func (h *Handler) Delete(c *echo.Context) error {
 	code := c.Param("code")
 
-	err := h.svc.Delete(c.Request().Context(), code)
+	result, err := h.svc.Delete(c.Request().Context(), code)
 	if err != nil {
 		return h.fail(c, err)
+	}
+
+	if result == 0 {
+		return c.JSON(http.StatusBadRequest, httpresponse.Error("Nothing to DELETE"))
 	}
 
 	return c.NoContent(http.StatusNoContent)
@@ -96,22 +115,30 @@ func (h *Handler) Delete(c *echo.Context) error {
 
 func (h *Handler) Update(c *echo.Context) error {
 	var hook BindLink
+
 	if err := c.Bind(&hook); err != nil {
 		return c.JSON(http.StatusBadRequest, httpresponse.Error("Incorrect PATCH request"))
+	}
+
+	if hook.Duration > liveTimeLink {
+		return c.JSON(http.StatusBadRequest, httpresponse.Error("Out of duration range"))
 	}
 
 	code := c.Param("code")
 
 	PLink := PatchLink{
 		Code:          code,
-		Orig_url:      &hook.Orig_url,
+		Orig_url:      hook.Orig_url,
 		Monet_enabled: hook.Monet_enabled,
 		Duration:      hook.Duration,
 	}
 
-	err := h.svc.Update(c.Request().Context(), &PLink)
+	result, err := h.svc.Update(c.Request().Context(), &PLink)
 	if err != nil {
 		return h.fail(c, err)
+	}
+	if result == 0 {
+		return c.JSON(http.StatusBadRequest, httpresponse.Error("Nothing to PATCH"))
 	}
 	return c.NoContent(http.StatusOK)
 }

@@ -13,8 +13,8 @@ type Repository interface {
 	CreateLink(ctx context.Context, l *Link) error
 	GetByCode(ctx context.Context, code string) (*Link, error)
 	DeleteExpired(ctx context.Context) (int64, error)
-	DeleteLinks(ctx context.Context, code string) error
-	UpdateLink(ctx context.Context, l *PatchLink) error
+	DeleteLinks(ctx context.Context, code string) (int64, error)
+	UpdateLink(ctx context.Context, l *PatchLink) (int64, error)
 }
 
 type PostgresRepository struct {
@@ -66,17 +66,23 @@ func (r *PostgresRepository) DeleteExpired(ctx context.Context) (int64, error) {
 	return res.RowsAffected()
 }
 
-func (r *PostgresRepository) DeleteLinks(ctx context.Context, code string) error {
-	_, err := r.Db.ExecContext(ctx, `DELETE FROM links WHERE code = $1`, code)
-	return err
+func (r *PostgresRepository) DeleteLinks(ctx context.Context, code string) (int64, error) {
+	resp, err := r.Db.ExecContext(ctx, `DELETE FROM links WHERE code = $1`, code)
+	if err != nil {
+		return 0, err
+	}
+	return resp.RowsAffected()
 }
 
-func (r *PostgresRepository) UpdateLink(ctx context.Context, l *PatchLink) error {
-	_, err := r.Db.ExecContext(ctx,
+func (r *PostgresRepository) UpdateLink(ctx context.Context, l *PatchLink) (int64, error) {
+	resp, err := r.Db.ExecContext(ctx,
 		`UPDATE links SET monetization_enabled = COALESCE($2, monetization_enabled),
 		expires_at = COALESCE($3, expires_at),
 		original_url = COALESCE($4, original_url)
     WHERE code = $1
 		`, l.Code, l.Monet_enabled, l.Expires_at, l.Orig_url)
-	return err
+	if err != nil {
+		return 0, err
+	}
+	return resp.RowsAffected()
 }

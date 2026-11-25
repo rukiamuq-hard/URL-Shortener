@@ -107,32 +107,32 @@ func (s *Service) Cleaner(ctx context.Context, every time.Duration) {
 
 }
 
-func (s *Service) Delete(ctx context.Context, code string) error {
+func (s *Service) Delete(ctx context.Context, code string) (int64, error) {
 	sctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	err := s.pdb.DeleteLinks(sctx, code)
-	return err
+	result, err := s.pdb.DeleteLinks(sctx, code)
+	return result, err
 }
 
-func (s *Service) Update(ctx context.Context, l *PatchLink) error {
+func (s *Service) Update(ctx context.Context, l *PatchLink) (int64, error) {
 	sctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
 	if l.Orig_url != nil {
 		u, err := url.Parse(*l.Orig_url)
 		if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Hostname() == "" {
-			return ErrInvalidInput
+			return 0, ErrInvalidInput
 		}
 	}
 
 	if l.Duration < 0 {
-		return ErrInvalidInput
+		return 0, ErrInvalidInput
 	} else if l.Duration > 0 {
 		t := time.Now().Add(time.Duration(l.Duration) * time.Second)
 		l.Expires_at = &t
 	}
 
-	err := s.pdb.UpdateLink(sctx, l)
-	return err
+	result, err := s.pdb.UpdateLink(sctx, l)
+	return result, err
 }
